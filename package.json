@@ -1,0 +1,20 @@
+{
+  "name": "motion-cut-ai",
+  "version": "1.0.0",
+  "description": "3D Motion Graphics Editor",
+  "main": "main.js",
+  "scripts": {
+    "dev": "vite",
+    "start": "electron .",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "gsap": "^3.12.5",
+    "lucide": "^0.370.0",
+    "three": "^0.163.0"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "vite": "^5.2.0"
+  }
+}
