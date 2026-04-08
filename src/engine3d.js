@@ -170,10 +170,10 @@ export class Engine3D {
 
   importModelFromFile(file) {
     const id = `model-${++this.sceneObjectIdCounter}`;
-    const url = URL.createObjectURL(file);
-    const name = file.name.replace(/\.[^/.]+$/, ''); // strip extension
+    const name = file.name.replace(/\.[^/.]+$/, '');
+    const ext = file.name.split('.').pop().toLowerCase();
 
-    this.gltfLoader.load(url, (gltf) => {
+    const onModelLoaded = (gltf) => {
       const model = gltf.scene;
 
       // Auto-scale to reasonable size
@@ -200,20 +200,47 @@ export class Engine3D {
       });
 
       this.scene.add(model);
-
       const obj = { id, type: 'model', name, mesh: model };
       this.sceneObjects.push(obj);
       this.selectedObjectId = id;
       document.dispatchEvent(new Event('sceneObjectsChanged'));
-
-      URL.revokeObjectURL(url);
       console.log(`Imported model: ${name}`);
-    }, undefined, (error) => {
-      console.error('Failed to load model:', error);
-      URL.revokeObjectURL(url);
-      // Fallback: add a placeholder
-      this.addPrimitive('cube', { x: 0, y: 0, z: 0 });
-    });
+    };
+
+    const onError = (error) => {
+      console.error('Import error:', error);
+      if (ext === 'gltf') {
+        alert(
+          `Failed to import "${file.name}".\n\n` +
+          `.gltf files often reference external .bin and texture files that can't be loaded from a file picker.\n\n` +
+          `Solution: Use .glb format instead (single self-contained file).`
+        );
+      } else {
+        alert(`Failed to import "${file.name}". The file may be corrupted.`);
+      }
+    };
+
+    if (ext === 'glb') {
+      // Binary GLTF — read as ArrayBuffer and parse directly
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        this.gltfLoader.parse(event.target.result, '', onModelLoaded, onError);
+      };
+      reader.onerror = () => alert('Failed to read file.');
+      reader.readAsArrayBuffer(file);
+    } else if (ext === 'gltf') {
+      // JSON GLTF — use blob URL with load() so relative paths have a chance
+      const url = URL.createObjectURL(file);
+      this.gltfLoader.load(url, (gltf) => {
+        URL.revokeObjectURL(url);
+        onModelLoaded(gltf);
+      }, undefined, (error) => {
+        URL.revokeObjectURL(url);
+        onError(error);
+      });
+    } else {
+      alert(`Unsupported format: .${ext}\nPlease use .glb or .gltf files.`);
+    }
 
     return id;
   }
