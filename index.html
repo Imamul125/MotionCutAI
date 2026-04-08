@@ -24,22 +24,94 @@
         <div id="properties-panel">
           <div class="panel-header">Properties</div>
           <div class="panel-content">
-            <div class="prop-group">
-              <label>Scene Text</label>
-              <input type="text" id="scene-text-input" value="LUMINOUS" />
+
+            <!-- Scene Hierarchy -->
+            <div class="scene-hierarchy">
+              <div class="scene-hierarchy-header">
+                <span>🎬 Scene Objects</span>
+              </div>
+              <div id="scene-objects-list" class="scene-objects-list">
+                <!-- Filled dynamically -->
+              </div>
+              <div class="scene-add-bar">
+                <button id="btn-add-text" class="scene-add-btn-large" title="Add 3D Text">
+                  <span class="add-icon">T</span><span>Text</span>
+                </button>
+                <button id="btn-add-cube" class="scene-add-btn-large" title="Add Cube">
+                  <span class="add-icon">▢</span><span>Cube</span>
+                </button>
+                <button id="btn-add-sphere" class="scene-add-btn-large" title="Add Sphere">
+                  <span class="add-icon">●</span><span>Sphere</span>
+                </button>
+                <button id="btn-import-model" class="scene-add-btn-large" title="Import 3D Model (.glb, .gltf)">
+                  <span class="add-icon">📂</span><span>Import</span>
+                </button>
+                <input type="file" id="file-import-model" accept=".glb,.gltf,.obj,.fbx" style="display:none;" />
+              </div>
             </div>
-            <div class="prop-group">
-              <label>Text Color</label>
-              <input type="color" id="scene-text-color" value="#E5B55A" style="width: 100%; height: 32px; border: none; border-radius: 4px; padding: 0; background: none; cursor: pointer;" />
+
+            <!-- Selected Object Properties -->
+            <div id="selected-obj-props" class="selected-obj-props">
+              <div class="prop-group">
+                <label>Name</label>
+                <input type="text" id="obj-name-input" value="" placeholder="Object name" />
+              </div>
+              <div class="prop-group" id="obj-text-group" style="display:none;">
+                <label>Text Content</label>
+                <input type="text" id="obj-text-content" value="" />
+              </div>
+              <div class="prop-group" id="obj-color-group">
+                <label>Color</label>
+                <input type="color" id="obj-color" value="#E5B55A" style="width: 100%; height: 28px; border: none; border-radius: 4px; padding: 0; background: none; cursor: pointer;" />
+              </div>
             </div>
-            <div class="prop-group">
-              <label>Spotlight Intensity</label>
+
+            <!-- Transform Section -->
+            <div id="transform-section" class="transform-section">
+              <div class="transform-header">
+                <span class="transform-icon">⊞</span>
+                <span id="transform-label">Transform — <em id="transform-track-name">None</em></span>
+              </div>
+              <div class="transform-row">
+                <label>Position</label>
+                <div class="xyz-inputs">
+                  <div class="xyz-field">
+                    <span class="xyz-label x" data-target="transform-pos-x">X</span>
+                    <input type="number" id="transform-pos-x" step="0.5" value="0" />
+                  </div>
+                  <div class="xyz-field">
+                    <span class="xyz-label y" data-target="transform-pos-y">Y</span>
+                    <input type="number" id="transform-pos-y" step="0.5" value="0" />
+                  </div>
+                  <div class="xyz-field">
+                    <span class="xyz-label z" data-target="transform-pos-z">Z</span>
+                    <input type="number" id="transform-pos-z" step="0.5" value="0" />
+                  </div>
+                </div>
+              </div>
+              <div class="transform-row">
+                <label>Scale</label>
+                <div class="xyz-inputs">
+                  <div class="xyz-field full">
+                    <span class="xyz-label s" data-target="transform-scale">S</span>
+                    <input type="number" id="transform-scale" step="0.1" value="1" min="0.1" />
+                  </div>
+                </div>
+              </div>
+              <div class="transform-hint">
+                Drag <kbd>X</kbd><kbd>Y</kbd><kbd>Z</kbd> labels to adjust • Press <kbd>K</kbd> to keyframe
+              </div>
+            </div>
+
+            <!-- Lighting -->
+            <div class="prop-group" style="margin-top: 1rem;">
+              <label>🔆 Spotlight Intensity</label>
               <input type="range" id="bloom-strength" min="0" max="3" step="0.1" value="1.5" />
             </div>
             
             <div id="ai-prompt-container">
               <label><i data-lucide="sparkles"></i> AI Script Generator</label>
-              <textarea id="ai-prompt-input" placeholder="Type your ad script (e.g. 'Camera zooms to keyboard, then text Titanium drops in')"></textarea>
+              <textarea id="ai-prompt-input" placeholder="Type your ad script (e.g. 'Camera zooms to keyboard, then text drops in')"></textarea>
               <button id="btn-auto-gen" class="action-btn primary magic-btn">✨ Generate Video</button>
             </div>
           </div>
