@@ -262,6 +262,93 @@ input, textarea {
   font-weight: 700;
   color: var(--accent);
 }
+
+/* 3-column add buttons grid */
+.scene-add-bar-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 4px;
+  padding: 5px;
+  margin-top: 5px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+}
+.scene-add-btn {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 5px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 5px;
+  background: rgba(229, 181, 90, 0.04);
+  color: var(--text-muted);
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.scene-add-btn:hover {
+  background: rgba(229, 181, 90, 0.15);
+  border-color: rgba(229, 181, 90, 0.35);
+  color: var(--accent);
+  transform: translateY(-1px);
+}
+.add-btn-icon {
+  font-size: 13px;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+.add-btn-label {
+  font-size: 10px;
+  font-weight: 500;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Env import button (inline small) */
+.env-import-btn {
+  width: 28px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--text-muted);
+  font-size: 12px;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.15s ease;
+}
+.env-import-btn:hover {
+  background: rgba(229, 181, 90, 0.15);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+/* Compact env controls */
+.env-compact-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+.env-compact-row select {
+  flex: 1;
+  padding: 4px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--text-main);
+  font-family: 'Inter', sans-serif;
+  font-size: 11px;
+  outline: none;
+  cursor: pointer;
+}
+
 .scene-objects-list {
   max-height: 160px;
   overflow-y: auto;
@@ -290,6 +377,12 @@ input, textarea {
 }
 .scene-obj-item.selected.model-type {
   border-left-color: #a29bfe;
+}
+.scene-obj-item.selected.light-type {
+  border-left-color: #55efc4;
+}
+.scene-obj-item.selected.media-type {
+  border-left-color: #fd79a8;
 }
 .scene-obj-icon {
   font-size: 14px;
@@ -454,6 +547,64 @@ input, textarea {
 }
 .xyz-label:active {
   filter: brightness(1.6);
+}
+
+/* --- Environment Section --- */
+.env-section, .scene-lights-section {
+  margin-top: 1rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+.env-header {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--accent);
+  margin-bottom: 0.5rem;
+}
+.env-section select {
+  width: 100%;
+  padding: 6px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--text-main);
+  font-family: 'Inter', sans-serif;
+  font-size: 12px;
+  outline: none;
+  cursor: pointer;
+}
+.env-section select:focus {
+  border-color: var(--accent);
+}
+.env-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+.toggle-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex: 1;
+}
+.toggle-label input[type="checkbox"] {
+  accent-color: var(--accent);
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
+/* --- Light Properties --- */
+.light-props {
+  margin-top: 0.5rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
 }
 
 

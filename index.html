@@ -20,7 +20,6 @@
           <!-- Three.js will inject canvas here -->
         </div>
 
-        <!-- Properties Panel -->
         <div id="properties-panel">
           <div class="panel-header">Properties</div>
           <div class="panel-content">
@@ -33,21 +32,39 @@
               <div id="scene-objects-list" class="scene-objects-list">
                 <!-- Filled dynamically -->
               </div>
-              <div class="scene-add-bar">
-                <button id="btn-add-text" class="scene-add-btn-large" title="Add 3D Text">
-                  <span class="add-icon">T</span><span>Text</span>
+              <!-- ALL add buttons in one place -->
+              <div class="scene-add-bar-grid">
+                <button id="btn-add-text" class="scene-add-btn" title="Add 3D Text">
+                  <span class="add-btn-icon">T</span><span class="add-btn-label">Text</span>
                 </button>
-                <button id="btn-add-cube" class="scene-add-btn-large" title="Add Cube">
-                  <span class="add-icon">▢</span><span>Cube</span>
+                <button id="btn-add-cube" class="scene-add-btn" title="Add Cube">
+                  <span class="add-btn-icon">▢</span><span class="add-btn-label">Cube</span>
                 </button>
-                <button id="btn-add-sphere" class="scene-add-btn-large" title="Add Sphere">
-                  <span class="add-icon">●</span><span>Sphere</span>
+                <button id="btn-add-sphere" class="scene-add-btn" title="Add Sphere">
+                  <span class="add-btn-icon">●</span><span class="add-btn-label">Sphere</span>
                 </button>
-                <button id="btn-import-model" class="scene-add-btn-large" title="Import 3D Model (.glb, .gltf)">
-                  <span class="add-icon">📂</span><span>Import</span>
+                <button id="btn-import-image" class="scene-add-btn" title="Add Image">
+                  <span class="add-btn-icon">🖼</span><span class="add-btn-label">Image</span>
                 </button>
-                <input type="file" id="file-import-model" accept=".glb,.gltf" style="display:none;" />
+                <button id="btn-import-video" class="scene-add-btn" title="Add Video">
+                  <span class="add-btn-icon">🎬</span><span class="add-btn-label">Video</span>
+                </button>
+                <button id="btn-import-model" class="scene-add-btn" title="Import 3D Model">
+                  <span class="add-btn-icon">📂</span><span class="add-btn-label">3D File</span>
+                </button>
+                <button id="btn-add-point-light" class="scene-add-btn" title="Point Light">
+                  <span class="add-btn-icon">💡</span><span class="add-btn-label">Point</span>
+                </button>
+                <button id="btn-add-spot-light" class="scene-add-btn" title="Spot Light">
+                  <span class="add-btn-icon">🔦</span><span class="add-btn-label">Spot</span>
+                </button>
+                <button id="btn-add-dir-light" class="scene-add-btn" title="Sun Light">
+                  <span class="add-btn-icon">☀️</span><span class="add-btn-label">Sun</span>
+                </button>
               </div>
+              <input type="file" id="file-import-model" accept=".glb,.gltf" style="display:none;" />
+              <input type="file" id="file-import-image" accept="image/*" style="display:none;" />
+              <input type="file" id="file-import-video" accept="video/*" style="display:none;" />
             </div>
 
             <!-- Selected Object Properties -->
@@ -62,7 +79,19 @@
               </div>
               <div class="prop-group" id="obj-color-group">
                 <label>Color</label>
-                <input type="color" id="obj-color" value="#E5B55A" style="width: 100%; height: 28px; border: none; border-radius: 4px; padding: 0; background: none; cursor: pointer;" />
+                <input type="color" id="obj-color" value="#E5B55A" style="width:100%;height:24px;border:none;border-radius:4px;padding:0;background:none;cursor:pointer;" />
+              </div>
+            </div>
+
+            <!-- Light Properties (shown when light is selected) -->
+            <div id="light-props" class="light-props" style="display:none;">
+              <div class="prop-group">
+                <label>💡 Light Intensity</label>
+                <input type="range" id="light-intensity" min="0" max="500" step="5" value="150" />
+              </div>
+              <div class="prop-group">
+                <label>Light Color</label>
+                <input type="color" id="light-color" value="#ffffff" style="width:100%;height:24px;border:none;border-radius:4px;padding:0;background:none;cursor:pointer;" />
               </div>
             </div>
 
@@ -103,12 +132,33 @@
               </div>
             </div>
 
-            <!-- Lighting -->
-            <div class="prop-group" style="margin-top: 1rem;">
-              <label>🔆 Spotlight Intensity</label>
-              <input type="range" id="bloom-strength" min="0" max="3" step="0.1" value="1.5" />
+            <!-- Environment Lighting (compact) -->
+            <div class="env-section">
+              <div class="env-header">🌍 Environment</div>
+              <div class="env-compact-row">
+                <select id="env-preset">
+                  <option value="">None (Dark)</option>
+                  <option value="https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/studio_small_09_1k.hdr">Studio</option>
+                  <option value="https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/kloppenheim_02_1k.hdr">Sunset</option>
+                  <option value="https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/moonless_golf_1k.hdr">Night</option>
+                  <option value="https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/quarry_01_1k.hdr">Outdoor</option>
+                </select>
+                <button id="btn-import-hdr" class="env-import-btn" title="Import .hdr file">📁</button>
+                <input type="file" id="file-import-hdr" accept=".hdr" style="display:none;" />
+              </div>
+              <div class="env-compact-row">
+                <input type="range" id="env-intensity" min="0" max="3" step="0.05" value="1" style="flex:1;" />
+                <label class="toggle-label">
+                  <input type="checkbox" id="env-show-bg" />
+                  <span>BG</span>
+                </label>
+                <label class="toggle-label">
+                  <input type="checkbox" id="toggle-gizmos" checked />
+                  <span>Gizmos</span>
+                </label>
+              </div>
             </div>
-            
+
             <div id="ai-prompt-container">
               <label><i data-lucide="sparkles"></i> AI Script Generator</label>
               <textarea id="ai-prompt-input" placeholder="Type your ad script (e.g. 'Camera zooms to keyboard, then text drops in')"></textarea>

@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { TextGenerator } from './components/TextGenerator.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { RGBELoader } from 'three/addons/loaders/RGBELoader.js';
 
 export class Engine3D {
   constructor(container) {
@@ -19,7 +20,15 @@ export class Engine3D {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.0;
+    this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     container.appendChild(this.renderer.domElement);
+
+    // HDR Environment
+    this.rgbeLoader = new RGBELoader();
+    this.envMap = null;
+    this.envIntensity = 1.0;
+    this.showEnvBackground = false;
+    this.originalBackground = this.scene.background;
 
     this.setupLighting();
 
@@ -54,7 +63,7 @@ export class Engine3D {
     this.activeModels = {}; // store loaded meshes by ID
     
     // --- Scene Objects Management ---
-    this.sceneObjects = []; // { id, type:'text'|'model', name, mesh }
+    this.sceneObjects = []; // { id, type:'text'|'model'|'light', name, mesh }
     this.sceneObjectIdCounter = 0;
     this.selectedObjectId = null;
 
@@ -151,12 +160,84 @@ export class Engine3D {
     return id;
   }
 
+  addImage(file) {
+    const id = `media-${++this.sceneObjectIdCounter}`;
+    const name = file.name.replace(/\.[^/.]+$/, '');
+    const url = URL.createObjectURL(file);
+    const textureLoader = new THREE.TextureLoader();
+
+    textureLoader.load(url, (texture) => {
+      texture.colorSpace = THREE.SRGBColorSpace;
+      const aspect = texture.image.width / texture.image.height;
+      const height = 3;
+      const width = height * aspect;
+
+      const geometry = new THREE.PlaneGeometry(width, height);
+      const material = new THREE.MeshBasicMaterial({
+        map: texture,
+        side: THREE.DoubleSide,
+        transparent: true,
+      });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(0, height / 2, 0);
+
+      this.scene.add(mesh);
+      const obj = { id, type: 'media', subtype: 'image', name, mesh };
+      this.sceneObjects.push(obj);
+      this.selectedObjectId = id;
+      document.dispatchEvent(new Event('sceneObjectsChanged'));
+      console.log(`Added image: ${name}`);
+    });
+    return id;
+  }
+
+  addVideo(file) {
+    const id = `media-${++this.sceneObjectIdCounter}`;
+    const name = file.name.replace(/\.[^/.]+$/, '');
+    const url = URL.createObjectURL(file);
+
+    const video = document.createElement('video');
+    video.src = url;
+    video.loop = true;
+    video.muted = true;
+    video.playsInline = true;
+    video.crossOrigin = 'anonymous';
+    video.play();
+
+    video.addEventListener('loadedmetadata', () => {
+      const aspect = video.videoWidth / video.videoHeight;
+      const height = 3;
+      const width = height * aspect;
+
+      const texture = new THREE.VideoTexture(video);
+      texture.colorSpace = THREE.SRGBColorSpace;
+
+      const geometry = new THREE.PlaneGeometry(width, height);
+      const material = new THREE.MeshBasicMaterial({
+        map: texture,
+        side: THREE.DoubleSide,
+      });
+      const mesh = new THREE.Mesh(geometry, material);
+      mesh.position.set(0, height / 2, 0);
+
+      this.scene.add(mesh);
+      const obj = { id, type: 'media', subtype: 'video', name, mesh, videoEl: video };
+      this.sceneObjects.push(obj);
+      this.selectedObjectId = id;
+      document.dispatchEvent(new Event('sceneObjectsChanged'));
+      console.log(`Added video: ${name}`);
+    });
+    return id;
+  }
+
   removeSceneObject(id) {
     const idx = this.sceneObjects.findIndex(o => o.id === id);
     if (idx === -1) return;
     const obj = this.sceneObjects[idx];
     this.scene.remove(obj.mesh);
+    if (obj.helper) this.scene.remove(obj.helper);
     if (obj.mesh.geometry) obj.mesh.geometry.dispose();
+    if (obj.mesh.material) obj.mesh.material.dispose?.();
     this.sceneObjects.splice(idx, 1);
     if (this.selectedObjectId === id) {
       this.selectedObjectId = this.sceneObjects.length > 0 ? this.sceneObjects[0].id : null;
@@ -246,8 +327,8 @@ export class Engine3D {
   }
 
   setupLighting() {
-    const ambientInfo = new THREE.AmbientLight(0xffffff, 0.4);
-    this.scene.add(ambientInfo);
+    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
+    this.scene.add(this.ambientLight);
 
     // Main controllable spotlight
     this.spotlight = new THREE.SpotLight(0xffffff, 2250);
@@ -262,6 +343,123 @@ export class Engine3D {
     const fillLight = new THREE.DirectionalLight(0xDFAD4D, 1);
     fillLight.position.set(-5, 0, -5);
     this.scene.add(fillLight);
+  }
+
+  // --- HDR Environment ---
+  loadHDRPreset(url) {
+    return new Promise((resolve, reject) => {
+      this.rgbeLoader.load(url, (texture) => {
+        texture.mapping = THREE.EquirectangularReflectionMapping;
+        this.envMap = texture;
+        this.scene.environment = texture;
+        this.scene.environmentIntensity = this.envIntensity;
+        if (this.showEnvBackground) {
+          this.scene.background = texture;
+        }
+        document.dispatchEvent(new Event('envLoaded'));
+        resolve(texture);
+      }, undefined, (err) => {
+        console.error('HDR load failed:', err);
+        reject(err);
+      });
+    });
+  }
+
+  loadHDRFile(file) {
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const loader = new RGBELoader();
+      loader.parse(event.target.result, '', (texture) => {
+          texture.mapping = THREE.EquirectangularReflectionMapping;
+          this.envMap = texture;
+          this.scene.environment = texture;
+          this.scene.environmentIntensity = this.envIntensity;
+          if (this.showEnvBackground) {
+            this.scene.background = texture;
+          }
+          document.dispatchEvent(new Event('envLoaded'));
+        });
+    };
+    reader.readAsArrayBuffer(file);
+  }
+
+  setEnvIntensity(val) {
+    this.envIntensity = val;
+    this.scene.environmentIntensity = val;
+  }
+
+  toggleEnvBackground(show) {
+    this.showEnvBackground = show;
+    if (show && this.envMap) {
+      this.scene.background = this.envMap;
+    } else {
+      this.scene.background = this.originalBackground;
+    }
+  }
+
+  clearEnvironment() {
+    this.envMap = null;
+    this.scene.environment = null;
+    this.scene.background = this.originalBackground;
+  }
+
+  toggleGizmos(visible) {
+    for (const obj of this.sceneObjects) {
+      if (obj.helper) {
+        obj.helper.visible = visible;
+      }
+    }
+  }
+
+  // --- Scene Lights ---
+  addLight(lightType = 'point', position = { x: 3, y: 5, z: 3 }) {
+    const id = `light-${++this.sceneObjectIdCounter}`;
+    let light, helper;
+    const color = 0xffffff;
+
+    switch (lightType) {
+      case 'point':
+        light = new THREE.PointLight(color, 150, 30);
+        light.position.set(position.x, position.y, position.z);
+        helper = new THREE.PointLightHelper(light, 0.3);
+        break;
+      case 'spot':
+        light = new THREE.SpotLight(color, 200, 30, Math.PI / 6, 0.5, 2);
+        light.position.set(position.x, position.y, position.z);
+        helper = new THREE.SpotLightHelper(light);
+        break;
+      case 'directional':
+        light = new THREE.DirectionalLight(color, 1.5);
+        light.position.set(position.x, position.y, position.z);
+        helper = new THREE.DirectionalLightHelper(light, 1);
+        break;
+      default:
+        return null;
+    }
+
+    this.scene.add(light);
+    if (helper) {
+      this.scene.add(helper);
+      // Respect current gizmo toggle state
+      const toggle = document.getElementById('toggle-gizmos');
+      if (toggle && !toggle.checked) helper.visible = false;
+    }
+
+    const names = { point: 'Point Light', spot: 'Spot Light', directional: 'Dir Light' };
+    const obj = {
+      id,
+      type: 'light',
+      lightType,
+      name: names[lightType],
+      mesh: light,        // We use 'mesh' field for consistency with transform system
+      helper,
+      lightRef: light,
+    };
+
+    this.sceneObjects.push(obj);
+    this.selectedObjectId = id;
+    document.dispatchEvent(new Event('sceneObjectsChanged'));
+    return id;
   }
 
   // --- Dynamic Model API ---

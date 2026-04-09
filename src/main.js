@@ -52,10 +52,11 @@ document.addEventListener('DOMContentLoaded', () => {
     for (const obj of engine.sceneObjects) {
       const item = document.createElement('div');
       const isSelected = engine.selectedObjectId === obj.id;
-      const typeClass = obj.type === 'text' ? 'text-type' : 'model-type';
-      item.className = `scene-obj-item ${typeClass} ${isSelected ? 'selected' : ''}`;
+      const typeMap = { text: 'text-type', model: 'model-type', light: 'light-type', media: 'media-type' };
+      item.className = `scene-obj-item ${typeMap[obj.type] || 'model-type'} ${isSelected ? 'selected' : ''}`;
 
-      const icon = obj.type === 'text' ? 'T' : '▢';
+      const icons = { text: 'T', model: '▢', light: '💡', media: obj.subtype === 'video' ? '🎬' : '🖼' };
+      const icon = icons[obj.type] || '▢';
       item.innerHTML = `
         <span class="scene-obj-icon">${icon}</span>
         <span class="scene-obj-name">${obj.name}</span>
@@ -65,7 +66,8 @@ document.addEventListener('DOMContentLoaded', () => {
       item.addEventListener('click', (e) => {
         if (e.target.closest('.scene-obj-delete')) return;
         engine.selectedObjectId = obj.id;
-        timeline.selectTrack(obj.type === 'text' ? 'text' : 'model');
+        const trackMap = { text: 'text', model: 'model', light: 'model', media: 'model' };
+        timeline.selectTrack(trackMap[obj.type] || 'model');
         renderSceneList();
         syncTransformInputs();
         syncObjProperties();
@@ -104,9 +106,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const obj = engine.getObjectById(objId);
     if (!obj) return;
 
-    const color = obj.type === 'text' ? '#E5B55A' : '#a29bfe';
+    const colorMap = { text: '#E5B55A', model: '#a29bfe', light: '#55efc4', media: '#fd79a8' };
     txTrackName.textContent = obj.name;
-    txTrackName.style.color = color;
+    txTrackName.style.color = colorMap[obj.type] || '#a29bfe';
     txPosX.value = obj.mesh.position.x.toFixed(1);
     txPosY.value = obj.mesh.position.y.toFixed(1);
     txPosZ.value = obj.mesh.position.z.toFixed(1);
@@ -127,11 +129,22 @@ document.addEventListener('DOMContentLoaded', () => {
 
     objNameInput.value = obj.name;
 
-    if (obj.type === 'text') {
-      objTextGroup.style.display = '';
-      objTextContent.value = obj.name;
-    } else {
-      objTextGroup.style.display = 'none';
+    // Show/hide type-specific controls
+    objTextGroup.style.display = obj.type === 'text' ? '' : 'none';
+    const objColorGroup = document.getElementById('obj-color-group');
+    if (objColorGroup) objColorGroup.style.display = obj.type === 'light' ? 'none' : '';
+
+    // Light-specific props
+    const lightProps = document.getElementById('light-props');
+    if (lightProps) {
+      if (obj.type === 'light') {
+        lightProps.style.display = '';
+        document.getElementById('light-intensity').value = obj.lightRef?.intensity || 150;
+        const lc = obj.lightRef?.color;
+        if (lc) document.getElementById('light-color').value = '#' + lc.getHexString();
+      } else {
+        lightProps.style.display = 'none';
+      }
     }
   }
 
@@ -211,7 +224,16 @@ document.addEventListener('DOMContentLoaded', () => {
       const obj = engine.getObjectById(engine.selectedObjectId);
       if (obj && obj.type === 'text') {
         const tg = obj.textGen || engine.textGen;
-        if (tg) tg.updateText(objTextContent.value || ' ');
+        if (tg) {
+          // Save current position before updateText destroys the mesh
+          const pos = obj.mesh.position.clone();
+          const scl = obj.mesh.scale.clone();
+          tg.updateText(objTextContent.value || ' ');
+          // updateText() creates a new mesh — update our reference
+          obj.mesh = tg.currentTextMesh;
+          obj.mesh.position.copy(pos);
+          obj.mesh.scale.copy(scl);
+        }
         obj.name = objTextContent.value;
         renderSceneList();
       }
@@ -255,20 +277,97 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  // --- Import Image ---
+  const imageInput = document.getElementById('file-import-image');
+  document.getElementById('btn-import-image')?.addEventListener('click', () => {
+    imageInput?.click();
+  });
+  imageInput?.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      engine.addImage(file);
+      imageInput.value = '';
+    }
+  });
+
+  // --- Import Video ---
+  const videoInput = document.getElementById('file-import-video');
+  document.getElementById('btn-import-video')?.addEventListener('click', () => {
+    videoInput?.click();
+  });
+  videoInput?.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      engine.addVideo(file);
+      videoInput.value = '';
+    }
+  });
+
+  // --- Add Light Buttons ---
+  document.getElementById('btn-add-point-light')?.addEventListener('click', () => {
+    engine.addLight('point', { x: 3, y: 5, z: 3 });
+  });
+  document.getElementById('btn-add-spot-light')?.addEventListener('click', () => {
+    engine.addLight('spot', { x: 0, y: 6, z: 4 });
+  });
+  document.getElementById('btn-add-dir-light')?.addEventListener('click', () => {
+    engine.addLight('directional', { x: -3, y: 8, z: 5 });
+  });
+
+  // --- Light Properties ---
+  document.getElementById('light-intensity')?.addEventListener('input', (e) => {
+    const obj = engine.getObjectById(engine.selectedObjectId);
+    if (obj?.type === 'light' && obj.lightRef) {
+      obj.lightRef.intensity = parseFloat(e.target.value);
+      if (obj.helper?.update) obj.helper.update();
+    }
+  });
+  document.getElementById('light-color')?.addEventListener('input', (e) => {
+    const obj = engine.getObjectById(engine.selectedObjectId);
+    if (obj?.type === 'light' && obj.lightRef) {
+      obj.lightRef.color.setStyle(e.target.value);
+      if (obj.helper?.update) obj.helper.update();
+    }
+  });
+
+  // --- HDR Environment ---
+  document.getElementById('env-preset')?.addEventListener('change', (e) => {
+    const url = e.target.value;
+    if (!url) {
+      engine.clearEnvironment();
+    } else {
+      engine.loadHDRPreset(url);
+    }
+  });
+  document.getElementById('env-intensity')?.addEventListener('input', (e) => {
+    engine.setEnvIntensity(parseFloat(e.target.value));
+  });
+  document.getElementById('env-show-bg')?.addEventListener('change', (e) => {
+    engine.toggleEnvBackground(e.target.checked);
+  });
+  const hdrFileInput = document.getElementById('file-import-hdr');
+  document.getElementById('btn-import-hdr')?.addEventListener('click', () => {
+    hdrFileInput?.click();
+  });
+  hdrFileInput?.addEventListener('change', (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      engine.loadHDRFile(file);
+      hdrFileInput.value = '';
+    }
+  });
+
+  // --- Gizmo Toggle ---
+  document.getElementById('toggle-gizmos')?.addEventListener('change', (e) => {
+    engine.toggleGizmos(e.target.checked);
+  });
+
   // Listen for scene changes
   document.addEventListener('sceneObjectsChanged', () => {
     renderSceneList();
     syncTransformInputs();
     syncObjProperties();
   });
-
-  // --- Spotlight ---
-  const bloomStrengthInput = document.getElementById('bloom-strength');
-  if (bloomStrengthInput && engine.spotlight) {
-    bloomStrengthInput.addEventListener('input', (e) => {
-      engine.spotlight.intensity = parseFloat(e.target.value) * 1500;
-    });
-  }
 
   // --- ASYNC RESOURCE BINDING ---
   document.addEventListener('textMeshReady', () => {
@@ -289,17 +388,77 @@ document.addEventListener('DOMContentLoaded', () => {
     const scriptText = promptInput ? promptInput.value : '';
     console.log("Analyzing Script:", scriptText);
     autoGenBtn.innerText = "✨ Generating Magic...";
+    autoGenBtn.disabled = true;
     
     setTimeout(() => {
       timeline.clearTimeline();
+
+      // Set initial camera
       engine.camera.position.set(-15, 5, 20);
+
+      // Add generated 3D objects to scene
+      const cubeId = engine.addPrimitive('cube', { x: 5, y: 0, z: -3 });
+      const sphereId = engine.addPrimitive('sphere', { x: -5, y: 0, z: -3 });
+      const lightId = engine.addLight('spot', { x: 0, y: 8, z: 5 });
+
+      // Add timeline clips
       timeline.addCameraMove(0, 5, 5, -2, 10);
       timeline.addTextDrop(1, 1.5, 10, 0);
       timeline.addCameraMove(5, 5, 0, 0, 5);
       timeline.addSFX(1, 1, 'Boom Impact');
       timeline.addSFX(2, 2, 'Digital Glitch');
       timeline.addSFX(5, 3, 'Whoosh Riser');
+
+      // Set keyframes for generated objects
+      // Text keyframes
+      const textObj = engine.sceneObjects.find(o => o.type === 'text');
+      if (textObj) {
+        timeline.addKeyframe('text', 0, {
+          objectId: textObj.id,
+          x: textObj.mesh.position.x,
+          y: textObj.mesh.position.y + 5,
+          z: textObj.mesh.position.z,
+          scale: 0.1,
+        });
+        timeline.addKeyframe('text', 1.5, {
+          objectId: textObj.id,
+          x: textObj.mesh.position.x,
+          y: textObj.mesh.position.y,
+          z: textObj.mesh.position.z,
+          scale: 1,
+        });
+      }
+
+      // Cube keyframes
+      const cubeObj = engine.getObjectById(cubeId);
+      if (cubeObj) {
+        timeline.addKeyframe('model', 0, {
+          objectId: cubeId,
+          x: 8, y: -5, z: -3, scale: 0.1,
+        });
+        timeline.addKeyframe('model', 2, {
+          objectId: cubeId,
+          x: 5, y: 0, z: -3, scale: 1,
+        });
+      }
+
+      // Sphere keyframes
+      const sphereObj = engine.getObjectById(sphereId);
+      if (sphereObj) {
+        timeline.addKeyframe('model', 0, {
+          objectId: sphereId,
+          x: -8, y: -5, z: -3, scale: 0.1,
+        });
+        timeline.addKeyframe('model', 2.5, {
+          objectId: sphereId,
+          x: -5, y: 0, z: -3, scale: 1,
+        });
+      }
+
       autoGenBtn.innerText = "✨ Generate Video";
+      autoGenBtn.disabled = false;
+      renderSceneList();
+      syncTransformInputs();
     }, 800);
   });
 
